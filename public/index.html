@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Pulse - Day 1</title>
+    </head>
+    
+    <body>
+        <h1>Pulse: Socket.IO connection test</h1>
+        <button id="btn">Send ping</button>
+        <ul id="log"></ul>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            const socket = io();
+            const log = document.getElementById('log');
+
+            function addLine(text) {
+            const li = document.createElement('li');
+            li.textContent = text;
+            log.appendChild(li);
+            }
+
+            socket.on('connect', () => addLine(`Connected! My id is ${socket.id}`));
+            socket.on('pong-client', (msg) => addLine(msg));
+
+            document.getElementById('btn').addEventListener('click', () => {
+            socket.emit('ping-server', 'Hello from the browser');
+            });
+        </script>
+    </body>
+</html>
