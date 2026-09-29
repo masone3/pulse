@@ -1,31 +1,30 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Pulse - Day 1</title>
-    </head>
-    
-    <body>
-        <h1>Pulse: Socket.IO connection test</h1>
-        <button id="btn">Send ping</button>
-        <ul id="log"></ul>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pulse</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="join-screen">
+    <h1>Pulse</h1>
+    <form id="join-form">
+      <input id="username-input" placeholder="Pick a username" maxlength="20" autocomplete="off" />
+      <button type="submit">Join</button>
+    </form>
+  </div>
 
-        <script src="/socket.io/socket.io.js"></script>
-        <script>
-            const socket = io();
-            const log = document.getElementById('log');
+  <div id="chat-screen" hidden>
+    <header>Pulse</header>
+    <ul id="messages"></ul>
+    <form id="chat-form">
+      <input id="message-input" placeholder="Type a message..." maxlength="500" autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+  </div>
 
-            function addLine(text) {
-            const li = document.createElement('li');
-            li.textContent = text;
-            log.appendChild(li);
-            }
-
-            socket.on('connect', () => addLine(`Connected! My id is ${socket.id}`));
-            socket.on('pong-client', (msg) => addLine(msg));
-
-            document.getElementById('btn').addEventListener('click', () => {
-            socket.emit('ping-server', 'Hello from the browser');
-            });
-        </script>
-    </body>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>
