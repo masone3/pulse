@@ -4,11 +4,13 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./db');
 const authRoutes = require('./routes/auth');
+const socketAuth = require('./middleware/socketAuth');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+io.use(socketAuth);
 connectDB();
 
 app.use(express.json());
@@ -16,34 +18,25 @@ app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  const { username } = socket.data;
+  console.log(`User connected: ${username} (${socket.id})`);
 
-  socket.on('join', (username) => {
-    const name = String(username || '').trim().slice(0, 20);
-    if (!name) return;
-
-    socket.data.username = name;
-    socket.broadcast.emit('system-message', `${name} joined the chat`);
-  });
+  socket.broadcast.emit('system-message', `${username} joined the chat`);
 
   socket.on('chat-message', (text) => {
-    const username = socket.data.username;
     const body = String(text || '').trim().slice(0, 500);
-    if (!username || !body) return;
+    if (!body) return;
 
     io.emit('chat-message', {
-      username,
+      username: socket.data.username,
       text: body,
       timestamp: new Date().toISOString(),
     });
   });
 
   socket.on('disconnect', () => {
-    const username = socket.data.username;
-    if (username) {
-      socket.broadcast.emit('system-message', `${username} left the chat`);
-    }
-    console.log(`User disconnected: ${socket.id}`);
+    socket.broadcast.emit('system-message', `${username} left the chat`);
+    console.log(`User disconnected: ${username} (${socket.id})`);
   });
 });
 
