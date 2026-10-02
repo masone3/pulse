@@ -1,14 +1,79 @@
-const socket = io();
-
-const joinScreen = document.getElementById('join-screen');
+const authScreen = document.getElementById('auth-screen');
 const chatScreen = document.getElementById('chat-screen');
-const joinForm = document.getElementById('join-form');
+const authForm = document.getElementById('auth-form');
 const usernameInput = document.getElementById('username-input');
+const passwordInput = document.getElementById('password-input');
+const authSubmit = document.getElementById('auth-submit');
+const authError = document.getElementById('auth-error');
+const toggleModeBtn = document.getElementById('toggle-mode');
+const logoutBtn = document.getElementById('logout-btn');
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const messages = document.getElementById('messages');
 
+let isRegisterMode = false;
+let socket = null;
 let myUsername = '';
+
+toggleModeBtn.addEventListener('click', () => {
+  isRegisterMode = !isRegisterMode;
+  authSubmit.textContent = isRegisterMode ? 'Register' : 'Log in';
+  toggleModeBtn.textContent = isRegisterMode
+    ? 'Already have an account? Log in'
+    : 'Need an account? Register';
+  authError.textContent = '';
+});
+
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authError.textContent = '';
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+  const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const message = data.errors ? data.errors[0].msg : data.error;
+      authError.textContent = message || 'Something went wrong';
+      return;
+    }
+
+    localStorage.setItem('pulse_token', data.token);
+    myUsername = data.username;
+    connectSocket(data.token);
+  } catch (err) {
+    authError.textContent = 'Could not reach the server';
+  }
+});
+
+function connectSocket(token) {
+  socket = io({ auth: { token } });
+
+  socket.on('connect', () => {
+    authScreen.hidden = true;
+    chatScreen.hidden = false;
+    messageInput.focus();
+  });
+
+  socket.on('connect_error', (err) => {
+    localStorage.removeItem('pulse_token');
+    authError.textContent = err.message || 'Connection failed';
+    authScreen.hidden = false;
+    chatScreen.hidden = true;
+  });
+
+  socket.on('chat-message', addMessage);
+  socket.on('system-message', addSystemMessage);
+}
 
 function addMessage({ username, text, timestamp }) {
   const li = document.createElement('li');
@@ -39,18 +104,6 @@ function addSystemMessage(text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-joinForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const name = usernameInput.value.trim();
-  if (!name) return;
-
-  myUsername = name;
-  socket.emit('join', name);
-  joinScreen.hidden = true;
-  chatScreen.hidden = false;
-  messageInput.focus();
-});
-
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
@@ -60,5 +113,13 @@ chatForm.addEventListener('submit', (e) => {
   messageInput.value = '';
 });
 
-socket.on('chat-message', addMessage);
-socket.on('system-message', addSystemMessage);
+logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('pulse_token');
+  if (socket) socket.disconnect();
+  location.reload();
+});
+
+const savedToken = localStorage.getItem('pulse_token');
+if (savedToken) {
+  connectSocket(savedToken);
+}

@@ -7,16 +7,22 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="join-screen">
+  <div id="auth-screen">
     <h1>Pulse</h1>
-    <form id="join-form">
-      <input id="username-input" placeholder="Pick a username" maxlength="20" autocomplete="off" />
-      <button type="submit">Join</button>
+    <form id="auth-form">
+      <input id="username-input" placeholder="Username" maxlength="20" autocomplete="off" />
+      <input id="password-input" type="password" placeholder="Password" autocomplete="off" />
+      <button type="submit" id="auth-submit">Log in</button>
     </form>
+    <p id="auth-error"></p>
+    <button id="toggle-mode" type="button">Need an account? Register</button>
   </div>
 
   <div id="chat-screen" hidden>
-    <header>Pulse</header>
+    <header>
+      <span>Pulse</span>
+      <button id="logout-btn" type="button">Log out</button>
+    </header>
     <ul id="messages"></ul>
     <form id="chat-form">
       <input id="message-input" placeholder="Type a message..." maxlength="500" autocomplete="off" />
