@@ -10,10 +10,15 @@ const logoutBtn = document.getElementById('logout-btn');
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const messages = document.getElementById('messages');
+const userListEl = document.getElementById('user-list');
 
 let isRegisterMode = false;
 let socket = null;
 let myUsername = '';
+
+const typingIndicator = document.getElementById('typing-indicator');
+let typingTimeout = null;
+const typingUsers = new Set();
 
 function getUsernameFromToken(token) {
   try {
@@ -64,9 +69,64 @@ authForm.addEventListener('submit', async (e) => {
   }
 });
 
+function updateTypingIndicator() {
+  if (typingUsers.size === 0) {
+    typingIndicator.textContent = '';
+  } else {
+    typingIndicator.textContent = `${[...typingUsers].join(', ')} typing...`;
+  }
+}
+
 function connectSocket(token) {
   myUsername = getUsernameFromToken(token);
   socket = io({ auth: { token } });
+
+  const roomListEl = document.getElementById('room-list');
+  const currentRoomEl = document.getElementById('current-room');
+
+  let currentRoom = null;
+
+  socket.on('room-list', (rooms) => {
+    roomListEl.innerHTML = '';
+    rooms.forEach((room) => {
+      const li = document.createElement('li');
+      li.textContent = room;
+      li.classList.add('room-item');
+      li.addEventListener('click', () => joinRoom(room));
+      roomListEl.appendChild(li);
+    });
+
+    if (!currentRoom) joinRoom(rooms[0]);
+  });
+
+  socket.on('user-typing', (name) => {
+    typingUsers.add(name);
+    updateTypingIndicator();
+  });
+
+  socket.on('user-stop-typing', (name) => {
+    typingUsers.delete(name);
+    updateTypingIndicator();
+  });
+
+  function joinRoom(room) {
+    currentRoom = room;
+    currentRoomEl.textContent = `# ${room}`;
+    socket.emit('join-room', room);
+
+    document.querySelectorAll('.room-item').forEach((el) => {
+      el.classList.toggle('active', el.textContent === room);
+    });
+  }
+
+  socket.on('presence-update', (usernames) => {
+    userListEl.innerHTML = '';
+    usernames.forEach((name) => {
+      const li = document.createElement('li');
+      li.textContent = name;
+      userListEl.appendChild(li);
+    });
+  });
 
   socket.on('connect', () => {
     authScreen.hidden = true;
@@ -125,7 +185,18 @@ chatForm.addEventListener('submit', (e) => {
   if (!text) return;
 
   socket.emit('chat-message', text);
+  socket.emit('stop-typing');
+  clearTimeout(typingTimeout);
   messageInput.value = '';
+});
+
+messageInput.addEventListener('input', () => {
+  socket.emit('typing');
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    socket.emit('stop-typing');
+  }, 1500);
 });
 
 logoutBtn.addEventListener('click', () => {

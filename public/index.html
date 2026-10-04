@@ -19,15 +19,24 @@
   </div>
 
   <div id="chat-screen" hidden>
-    <header>
-      <span>Pulse</span>
-      <button id="logout-btn" type="button">Log out</button>
-    </header>
-    <ul id="messages"></ul>
-    <form id="chat-form">
-      <input id="message-input" placeholder="Type a message..." maxlength="500" autocomplete="off" />
-      <button type="submit">Send</button>
-    </form>
+    <<div id="sidebar">
+      <h2>Rooms</h2>
+      <ul id="room-list"></ul>
+      <h2>Online</h2>
+      <ul id="user-list"></ul>
+    </div>
+    <div id="chat-main">
+      <header>
+        <span id="current-room">Pulse</span>
+        <button id="logout-btn" type="button">Log out</button>
+      </header>
+      <ul id="messages"></ul>
+      <p id="typing-indicator"></p>
+      <form id="chat-form">
+        <input id="message-input" placeholder="Type a message..." maxlength="500" autocomplete="off" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
