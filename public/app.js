@@ -15,6 +15,16 @@ let isRegisterMode = false;
 let socket = null;
 let myUsername = '';
 
+function getUsernameFromToken(token) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded.username;
+  } catch {
+    return null;
+  }
+}
+
 toggleModeBtn.addEventListener('click', () => {
   isRegisterMode = !isRegisterMode;
   authSubmit.textContent = isRegisterMode ? 'Register' : 'Log in';
@@ -48,7 +58,6 @@ authForm.addEventListener('submit', async (e) => {
     }
 
     localStorage.setItem('pulse_token', data.token);
-    myUsername = data.username;
     connectSocket(data.token);
   } catch (err) {
     authError.textContent = 'Could not reach the server';
@@ -56,6 +65,7 @@ authForm.addEventListener('submit', async (e) => {
 });
 
 function connectSocket(token) {
+  myUsername = getUsernameFromToken(token);
   socket = io({ auth: { token } });
 
   socket.on('connect', () => {
@@ -69,6 +79,11 @@ function connectSocket(token) {
     authError.textContent = err.message || 'Connection failed';
     authScreen.hidden = false;
     chatScreen.hidden = true;
+  });
+
+  socket.on('chat-history', (history) => {
+    messages.innerHTML = '';
+    history.forEach(addMessage);
   });
 
   socket.on('chat-message', addMessage);
