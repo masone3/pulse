@@ -120,3 +120,60 @@ header {
   padding: 0.4rem 0.8rem;
   font-size: 0.85rem;
 }
+
+#chat-screen {
+  flex-direction: row;
+  max-width: 800px;
+}
+
+#sidebar {
+  width: 160px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+#sidebar h2 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 1rem 0 0.5rem;
+}
+
+#sidebar h2:first-child { margin-top: 0; }
+
+#room-list, #user-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.room-item {
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.room-item:hover { background: #e5e7eb; }
+.room-item.active { background: #4f46e5; color: white; }
+
+#user-list li {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.5rem;
+}
+
+#chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#typing-indicator {
+  min-height: 1.2em;
+  font-size: 0.8rem;
+  color: #6b7280;
+  padding: 0 0.75rem;
+  margin: 0;
+}
