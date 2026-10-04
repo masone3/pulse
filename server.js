@@ -11,6 +11,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const onlineUsers = new Map(); // socket.id -> { username, room }
+
 io.use(socketAuth);
 connectDB();
 
@@ -18,41 +20,73 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 
+const ROOMS = ['general', 'random', 'tech'];
+
+function broadcastPresence(room) {
+  const usersInRoom = [...onlineUsers.values()]
+    .filter((u) => u.room === room)
+    .map((u) => u.username);
+
+  io.to(room).emit('presence-update', usersInRoom);
+}
+
 io.on('connection', async (socket) => {
   const { username } = socket.data;
+  socket.data.room = null;
   console.log(`User connected: ${username} (${socket.id})`);
 
-  try {
-    const recentMessages = await Message.find()
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
+  socket.emit('room-list', ROOMS);
 
-    const formatted = recentMessages.reverse().map((m) => ({
-      username: m.username,
-      text: m.text,
-      timestamp: m.createdAt,
-    }));
+  socket.on('join-room', async (roomName) => {
+    if (!ROOMS.includes(roomName)) return;
 
-    socket.emit('chat-history', formatted);
-  } catch (err) {
-    console.error('Error loading history:', err.message);
-  }
+    if (socket.data.room) {
+      socket.leave(socket.data.room);
+      socket.to(socket.data.room).emit('system-message', `${username} left the room`);
+      broadcastPresence(socket.data.room);
+    }
 
-  socket.broadcast.emit('system-message', `${username} joined the chat`);
+    socket.data.room = roomName;
+    socket.join(roomName);
+    onlineUsers.set(socket.id, { username, room: roomName });
+
+    try {
+      const recentMessages = await Message.find({ room: roomName })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean();
+
+      const formatted = recentMessages.reverse().map((m) => ({
+        username: m.username,
+        text: m.text,
+        timestamp: m.createdAt,
+      }));
+
+      socket.emit('chat-history', formatted);
+    } catch (err) {
+      console.error('Error loading history:', err.message);
+    }
+
+    socket.to(roomName).emit('system-message', `${username} joined the room`);
+    broadcastPresence(roomName);
+  });
 
   socket.on('chat-message', async (text) => {
+    const room = socket.data.room;
+    if (!room) return;
+
     const body = String(text || '').trim().slice(0, 500);
     if (!body) return;
 
     try {
       const message = await Message.create({
+        room,
         sender: socket.data.userId,
         username: socket.data.username,
         text: body,
       });
 
-      io.emit('chat-message', {
+      io.to(room).emit('chat-message', {
         username: message.username,
         text: message.text,
         timestamp: message.createdAt,
@@ -62,13 +96,24 @@ io.on('connection', async (socket) => {
     }
   });
 
+  socket.on('typing', () => {
+    if (socket.data.room) {
+      socket.to(socket.data.room).emit('user-typing', username);
+    }
+  });
+
+  socket.on('stop-typing', () => {
+    if (socket.data.room) {
+      socket.to(socket.data.room).emit('user-stop-typing', username);
+    }
+  });
+
   socket.on('disconnect', () => {
-    socket.broadcast.emit('system-message', `${username} left the chat`);
+    if (socket.data.room) {
+      socket.to(socket.data.room).emit('system-message', `${username} left the room`);
+      onlineUsers.delete(socket.id);
+      broadcastPresence(socket.data.room);
+    }
     console.log(`User disconnected: ${username} (${socket.id})`);
   });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
 });
