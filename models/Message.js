@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema(
   {
+    room: {
+      type: String,
+      required: true,
+      default: 'general',
+    },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
