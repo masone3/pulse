@@ -19,6 +19,7 @@ connectDB();
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
+app.use('/emoji-picker', express.static('node_modules/emoji-picker-element'));
 
 const ROOMS = ['general', 'random', 'tech'];
 
@@ -116,4 +117,9 @@ io.on('connection', async (socket) => {
     }
     console.log(`User disconnected: ${username} (${socket.id})`);
   });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
