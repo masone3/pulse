@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pulse</title>
   <link rel="stylesheet" href="style.css" />
+  <script type="module" src="/emoji-picker/index.js"></script>
 </head>
 <body>
   <div id="auth-screen">
@@ -19,7 +20,7 @@
   </div>
 
   <div id="chat-screen" hidden>
-    <<div id="sidebar">
+    <div id="sidebar">
       <h2>Rooms</h2>
       <ul id="room-list"></ul>
       <h2>Online</h2>
@@ -32,7 +33,11 @@
       </header>
       <ul id="messages"></ul>
       <p id="typing-indicator"></p>
+      <div id="emoji-wrapper">
+        <emoji-picker id="emoji-picker" hidden></emoji-picker>
+      </div>
       <form id="chat-form">
+        <button type="button" id="emoji-btn">😊</button>
         <input id="message-input" placeholder="Type a message..." maxlength="500" autocomplete="off" />
         <button type="submit">Send</button>
       </form>

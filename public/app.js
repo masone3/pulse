@@ -11,6 +11,8 @@ const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input');
 const messages = document.getElementById('messages');
 const userListEl = document.getElementById('user-list');
+const emojiBtn = document.getElementById('emoji-btn');
+const emojiPicker = document.getElementById('emoji-picker');
 
 let isRegisterMode = false;
 let socket = null;
@@ -197,6 +199,26 @@ messageInput.addEventListener('input', () => {
   typingTimeout = setTimeout(() => {
     socket.emit('stop-typing');
   }, 1500);
+});
+
+emojiBtn.addEventListener('click', () => {
+  emojiPicker.hidden = !emojiPicker.hidden;
+});
+
+emojiPicker.addEventListener('emoji-click', (event) => {
+  messageInput.value += event.detail.unicode;
+  messageInput.focus();
+  emojiPicker.hidden = true;
+  socket.emit('typing');
+});
+
+document.addEventListener('click', (event) => {
+  const clickedInsidePicker = emojiPicker.contains(event.target);
+  const clickedButton = emojiBtn.contains(event.target);
+
+  if (!clickedInsidePicker && !clickedButton && !emojiPicker.hidden) {
+    emojiPicker.hidden = true;
+  }
 });
 
 logoutBtn.addEventListener('click', () => {
