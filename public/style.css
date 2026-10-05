@@ -177,3 +177,22 @@ header {
   padding: 0 0.75rem;
   margin: 0;
 }
+
+#emoji-wrapper {
+  position: relative;
+}
+
+emoji-picker {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 10;
+  --background: white;
+  --border-color: #e5e7eb;
+}
+
+#emoji-btn {
+  background: none;
+  font-size: 1.2rem;
+  padding: 0 0.4rem;
+}
