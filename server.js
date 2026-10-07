@@ -6,6 +6,7 @@ const connectDB = require('./db');
 const authRoutes = require('./routes/auth');
 const socketAuth = require('./middleware/socketAuth');
 const Message = require('./models/Message');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = http.createServer(app);
@@ -20,6 +21,8 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 app.use('/emoji-picker', express.static('node_modules/emoji-picker-element'));
+app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 
 const ROOMS = ['general', 'random', 'tech'];
 
@@ -60,6 +63,7 @@ io.on('connection', async (socket) => {
       const formatted = recentMessages.reverse().map((m) => ({
         username: m.username,
         text: m.text,
+        imageUrl: m.imageUrl,
         timestamp: m.createdAt,
       }));
 
@@ -72,12 +76,14 @@ io.on('connection', async (socket) => {
     broadcastPresence(roomName);
   });
 
-  socket.on('chat-message', async (text) => {
+  socket.on('chat-message', async ({ text, imageUrl }) => {
     const room = socket.data.room;
     if (!room) return;
 
     const body = String(text || '').trim().slice(0, 500);
-    if (!body) return;
+    const image = typeof imageUrl === 'string' ? imageUrl.trim() : '';
+
+    if (!body && !image) return;
 
     try {
       const message = await Message.create({
@@ -85,11 +91,13 @@ io.on('connection', async (socket) => {
         sender: socket.data.userId,
         username: socket.data.username,
         text: body,
+        imageUrl: image || null,
       });
 
       io.to(room).emit('chat-message', {
         username: message.username,
         text: message.text,
+        imageUrl: message.imageUrl,
         timestamp: message.createdAt,
       });
     } catch (err) {
