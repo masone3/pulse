@@ -13,6 +13,14 @@ const messages = document.getElementById('messages');
 const userListEl = document.getElementById('user-list');
 const emojiBtn = document.getElementById('emoji-btn');
 const emojiPicker = document.getElementById('emoji-picker');
+const imageBtn = document.getElementById('image-btn');
+const imageInput = document.getElementById('image-input');
+const imagePreviewWrapper = document.getElementById('image-preview-wrapper');
+const imagePreview = document.getElementById('image-preview');
+const removeImageBtn = document.getElementById('remove-image-btn');
+const chatError = document.getElementById('chat-error');
+
+let selectedImageFile = null;
 
 let isRegisterMode = false;
 let socket = null;
@@ -152,7 +160,7 @@ function connectSocket(token) {
   socket.on('system-message', addSystemMessage);
 }
 
-function addMessage({ username, text, timestamp }) {
+function addMessage({ username, text, imageUrl, timestamp }) {
   const li = document.createElement('li');
   li.classList.add('message');
   if (username === myUsername) li.classList.add('mine');
@@ -165,10 +173,21 @@ function addMessage({ username, text, timestamp }) {
   });
   meta.textContent = `${username} · ${time}`;
 
-  const body = document.createElement('div');
-  body.textContent = text;
+  li.appendChild(meta);
 
-  li.append(meta, body);
+  if (imageUrl) {
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.classList.add('chat-image');
+    li.appendChild(img);
+  }
+
+  if (text) {
+    const body = document.createElement('div');
+    body.textContent = text;
+    li.appendChild(body);
+  }
+
   messages.appendChild(li);
   messages.scrollTop = messages.scrollHeight;
 }
@@ -181,15 +200,49 @@ function addSystemMessage(text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-chatForm.addEventListener('submit', (e) => {
+chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  chatError.textContent = '';
   const text = messageInput.value.trim();
-  if (!text) return;
 
-  socket.emit('chat-message', text);
+  if (!text && !selectedImageFile) return;
+
+  let imageUrl = null;
+
+  if (selectedImageFile) {
+    const formData = new FormData();
+    formData.append('image', selectedImageFile);
+
+    try {
+      const token = localStorage.getItem('pulse_token');
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        chatError.textContent = data.error || 'Image upload failed';
+        return;
+      }
+
+      imageUrl = data.url;
+    } catch (err) {
+      console.error('Upload failed:', err.message);
+      return;
+    }
+  }
+
+  socket.emit('chat-message', { text, imageUrl });
   socket.emit('stop-typing');
   clearTimeout(typingTimeout);
+
   messageInput.value = '';
+  selectedImageFile = null;
+  imageInput.value = '';
+  imagePreviewWrapper.hidden = true;
 });
 
 messageInput.addEventListener('input', () => {
@@ -231,3 +284,22 @@ const savedToken = localStorage.getItem('pulse_token');
 if (savedToken) {
   connectSocket(savedToken);
 }
+
+imageBtn.addEventListener('click', () => {
+  imageInput.click();
+});
+
+imageInput.addEventListener('change', () => {
+  const file = imageInput.files[0];
+  if (!file) return;
+
+  selectedImageFile = file;
+  imagePreview.src = URL.createObjectURL(file);
+  imagePreviewWrapper.hidden = false;
+});
+
+removeImageBtn.addEventListener('click', () => {
+  selectedImageFile = null;
+  imageInput.value = '';
+  imagePreviewWrapper.hidden = true;
+});

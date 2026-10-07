@@ -36,11 +36,18 @@
       <div id="emoji-wrapper">
         <emoji-picker id="emoji-picker" hidden></emoji-picker>
       </div>
+      <p id="chat-error"></p>
       <form id="chat-form">
         <button type="button" id="emoji-btn">😊</button>
+        <button type="button" id="image-btn">📷</button>
+        <input type="file" id="image-input" accept="image/*" hidden />
         <input id="message-input" placeholder="Type a message..." maxlength="500" autocomplete="off" />
         <button type="submit">Send</button>
       </form>
+      <div id="image-preview-wrapper" hidden>
+        <img id="image-preview" />
+        <button type="button" id="remove-image-btn">✕</button>
+      </div>
     </div>
   </div>
 
