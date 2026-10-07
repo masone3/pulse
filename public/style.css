@@ -196,3 +196,47 @@ emoji-picker {
   font-size: 1.2rem;
   padding: 0 0.4rem;
 }
+
+#image-preview-wrapper {
+  position: relative;
+  display: inline-block;
+  padding: 0.5rem 0.75rem;
+}
+
+#image-preview {
+  max-width: 100px;
+  max-height: 100px;
+  border-radius: 8px;
+  display: block;
+}
+
+#remove-image-btn {
+  position: absolute;
+  top: -6px;
+  right: 2px;
+  background: #dc2626;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.chat-image {
+  max-width: 250px;
+  max-height: 250px;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 0.25rem;
+  cursor: pointer;
+}
+
+#chat-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+  padding: 0 0.75rem;
+  margin: 0;
+  min-height: 1.1em;
+}
