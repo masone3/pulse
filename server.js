@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./config/validateEnv')();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -9,6 +10,7 @@ const Message = require('./models/Message');
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server);
 
@@ -17,12 +19,47 @@ const onlineUsers = new Map(); // socket.id -> { username, room }
 io.use(socketAuth);
 connectDB();
 
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts, please try again later' },
+});
+
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json());
+app.use(express.static('public'));
+app.use('/emoji-picker', express.static('node_modules/emoji-picker-element'));
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/upload', uploadRoutes);
+
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/api/auth', authRoutes);
 app.use('/emoji-picker', express.static('node_modules/emoji-picker-element'));
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
+
+const multer = require('multer');
+
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE' ? 'Image must be under 5MB' : err.message;
+    return res.status(400).json({ error: message });
+  }
+
+  const status = err.status || 500;
+  if (status >= 500) console.error(err);
+
+  res.status(status).json({
+    error: status < 500 ? err.message : 'Something went wrong',
+  });
+});
 
 const ROOMS = ['general', 'random', 'tech'];
 
@@ -76,34 +113,37 @@ io.on('connection', async (socket) => {
     broadcastPresence(roomName);
   });
 
-  socket.on('chat-message', async ({ text, imageUrl }) => {
-    const room = socket.data.room;
-    if (!room) return;
+  socket.on('chat-message', async (payload) => {
+  const room = socket.data.room;
+  if (!room) return;
 
-    const body = String(text || '').trim().slice(0, 500);
-    const image = typeof imageUrl === 'string' ? imageUrl.trim() : '';
+  const { text, imageUrl } =
+    payload && typeof payload === 'object' ? payload : {};
 
-    if (!body && !image) return;
+  const body = typeof text === 'string' ? text.trim().slice(0, 500) : '';
+  const image = isValidImageUrl(imageUrl) ? imageUrl : null;
 
-    try {
-      const message = await Message.create({
-        room,
-        sender: socket.data.userId,
-        username: socket.data.username,
-        text: body,
-        imageUrl: image || null,
-      });
+  if (!body && !image) return;
 
-      io.to(room).emit('chat-message', {
-        username: message.username,
-        text: message.text,
-        imageUrl: message.imageUrl,
-        timestamp: message.createdAt,
-      });
-    } catch (err) {
-      console.error('Error saving message:', err.message);
-    }
-  });
+  try {
+    const message = await Message.create({
+      room,
+      sender: socket.data.userId,
+      username: socket.data.username,
+      text: body,
+      imageUrl: image,
+    });
+
+    io.to(room).emit('chat-message', {
+      username: message.username,
+      text: message.text,
+      imageUrl: message.imageUrl,
+      timestamp: message.createdAt,
+    });
+  } catch (err) {
+    console.error('Error saving message:', err.message);
+  }
+});
 
   socket.on('typing', () => {
     if (socket.data.room) {
@@ -126,6 +166,21 @@ io.on('connection', async (socket) => {
     console.log(`User disconnected: ${username} (${socket.id})`);
   });
 });
+
+function isValidImageUrl(url) {
+  if (typeof url !== 'string') return false;
+
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' &&
+      parsed.hostname === 'res.cloudinary.com' &&
+      parsed.pathname.startsWith(`/${process.env.CLOUDINARY_CLOUD_NAME}/`)
+    );
+  } catch {
+    return false;
+  }
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
